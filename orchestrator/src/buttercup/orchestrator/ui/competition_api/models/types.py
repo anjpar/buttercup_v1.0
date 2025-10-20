@@ -70,6 +70,14 @@ class POVSubmission(BaseModel):
         ...,
         description="Base64 encoded vuln trigger\n\n2MiB max size before Base64 encoding",
     )
+    stack_trace: str | None = Field(
+        None,
+        description="Stack trace from the crash",
+    )
+    dedup_token: str | None = Field(
+        None,
+        description="Deduplication token for crash clustering",
+    )
 
 
 class PatchSubmission(BaseModel):

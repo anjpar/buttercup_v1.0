@@ -34,7 +34,9 @@ class TypesPOVSubmission(BaseModel):
     fuzzer_name: Annotated[str, Field(strict=True, max_length=4096)] = Field(description="Fuzz Tooling fuzzer that exercises this vuln  4KiB max size")
     sanitizer: Annotated[str, Field(strict=True, max_length=4096)] = Field(description="Fuzz Tooling Sanitizer that exercises this vuln  4KiB max size")
     testcase: StrictStr = Field(description="Base64 encoded vuln trigger  2MiB max size before Base64 encoding")
-    __properties: ClassVar[List[str]] = ["architecture", "engine", "fuzzer_name", "sanitizer", "testcase"]
+    stack_trace: Optional[StrictStr] = Field(default=None, description="Stack trace from the crash")
+    dedup_token: Optional[StrictStr] = Field(default=None, description="Deduplication token for crash clustering")
+    __properties: ClassVar[List[str]] = ["architecture", "engine", "fuzzer_name", "sanitizer", "testcase",  "stack_trace", "dedup_token"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -91,7 +93,9 @@ class TypesPOVSubmission(BaseModel):
             "engine": obj.get("engine"),
             "fuzzer_name": obj.get("fuzzer_name"),
             "sanitizer": obj.get("sanitizer"),
-            "testcase": obj.get("testcase")
+            "testcase": obj.get("testcase"),
+            "stack_trace": obj.get("stack_trace"),
+            "dedup_token": obj.get("dedup_token")
         })
         return _obj
 

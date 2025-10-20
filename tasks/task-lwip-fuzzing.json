@@ -1,0 +1,10 @@
+{
+  "name": "lwip-fuzzing-16h",
+  "challenge_repo_url": "https://github.com/anjpar/lwip.git",
+  "challenge_repo_ref": "master",
+  "challenge_repo_head_ref": "master",
+  "fuzz_tooling_url": "https://github.com/anjpar/oss-fuzz.git",
+  "fuzz_tooling_ref": "master",
+  "fuzz_tooling_project_name": "lwip",
+  "duration": 57600
+}

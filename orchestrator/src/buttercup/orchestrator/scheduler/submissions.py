@@ -275,6 +275,8 @@ class CompetitionAPI:
                 fuzzer_name=crash.crash.harness_name,
                 sanitizer=crash.crash.target.sanitizer,
                 testcase=crash_data,
+                stack_trace=crash.tracer_stacktrace or crash.crash.stacktrace,  # Use tracer's if available
+                dedup_token=crash.crash.crash_token,
             )
 
             # Telemetry

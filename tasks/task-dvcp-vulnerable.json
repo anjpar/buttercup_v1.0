@@ -1,0 +1,10 @@
+{
+  "name": "dvcp-vulnerable-ai-test",
+  "challenge_repo_url": "https://github.com/anjpar/dvcp-safe-and-vulnerable.git",
+  "challenge_repo_ref": "main",
+  "challenge_repo_head_ref": "vulnerable",
+  "fuzz_tooling_url": "https://github.com/anjpar/oss-fuzz.git",
+  "fuzz_tooling_ref": "master",
+  "fuzz_tooling_project_name": "dvcp-safe-vulnerable",
+  "duration": 600
+}

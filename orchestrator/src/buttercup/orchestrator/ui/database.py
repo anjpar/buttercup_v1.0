@@ -69,6 +69,10 @@ class POV(Base):
     testcase: Mapped[bytes] = mapped_column(BLOB)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
+    # NEW FIELDS for crash triage
+    stack_trace: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dedup_token: Mapped[str | None] = mapped_column(String, nullable=True)
+
     # Relationship
     task: Mapped[Task] = relationship("Task", back_populates="povs")
 
@@ -340,6 +344,8 @@ class DatabaseManager:
         fuzzer_name: str,
         sanitizer: str,
         testcase: bytes,
+        stack_trace: str | None = None,
+        dedup_token: str | None = None,
     ) -> POV:
         """Create a new POV."""
         with self.get_session() as session:
@@ -350,6 +356,8 @@ class DatabaseManager:
                 fuzzer_name=fuzzer_name,
                 sanitizer=sanitizer,
                 testcase=testcase,
+                stack_trace=stack_trace,
+                dedup_token=dedup_token,
             )
             session.add(pov)
             session.commit()

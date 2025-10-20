@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class CrashSet:
-    def __init__(self, redis: Redis):
+    def __init__(self, redis: Redis, task_id: str):
         self.redis = redis
-        self.set_name = "crash_set"
+        self.set_name = f"crash_set_{task_id}"
         self.set = RedisSet(redis, self.set_name)
 
     def _get_final_line_number(self, crash_info: CrashInfo) -> int:

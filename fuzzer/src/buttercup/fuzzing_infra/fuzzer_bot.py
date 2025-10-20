@@ -89,7 +89,7 @@ class FuzzerBot(TaskLoop):
                     )
                     result = self.runner.run_fuzzer(fuzz_conf)
 
-                    crash_set = CrashSet(self.redis)
+                    crash_set = CrashSet(self.redis, task.task_id)
                     crash_dir = CrashDir(
                         self.crs_scratch_dir,
                         task.task_id,

@@ -12,6 +12,7 @@ let dashboardConfig = {
     crs_instance_id: null
 };
 let currentTab = 'tasks';
+let crashClusters = null;
 
 // API base URL - will be set dynamically
 const API_BASE = '';
@@ -217,7 +218,8 @@ async function loadDashboard() {
             loadStats(),
             loadAllPovs(),
             loadAllPatches(),
-            loadConfig()
+            loadConfig(),
+	    loadCrashClusters()
         ]);
         
         updateDashboard();
@@ -295,6 +297,194 @@ async function loadAllPatches() {
     }
 }
 
+// Load crash clusters
+async function loadCrashClusters() {
+    try {
+        const response = await fetch(`${API_BASE}/v1/dashboard/crash_clusters`);
+        crashClusters = await response.json();
+    	if (currentTab === 'crash-triage') {
+	    renderCrashClusters();
+	}
+    } catch (error) {
+        console.error('Error loading crash clusters:', error);
+	const container = document.getElementById('clusters-container');
+        if (container) {
+            container.innerHTML = '<div class="empty-state"><p>Error loading crash data</p></div>';
+        }
+    }
+}
+
+// Render crash clusters
+function renderCrashClusters() {
+    if (!crashClusters) return;
+    
+    // Render stats
+    const statsHtml = `
+        <div class="card">
+            <h3>Total Crashes</h3>
+            <div class="stat-number">${crashClusters.total_crashes}</div>
+        </div>
+        <div class="card">
+            <h3>Unique Bugs</h3>
+            <div class="stat-number">${crashClusters.total_clusters}</div>
+        </div>
+        <div class="card">
+            <h3>Unclustered</h3>
+            <div class="stat-number">${crashClusters.unclustered.length}</div>
+        </div>
+    `;
+    
+    const statsContainer = document.getElementById('crash-stats');
+    if (statsContainer) {
+        statsContainer.innerHTML = statsHtml;
+        statsContainer.className = 'status-cards';
+    }
+    
+    // Render clusters
+    const container = document.getElementById('clusters-container');
+    if (!container) return;
+    
+    if (crashClusters.clusters.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No crash clusters found yet. Keep fuzzing!</p></div>';
+        return;
+    }
+    
+    let html = '';
+    crashClusters.clusters.forEach((cluster, idx) => {
+        const severity = cluster.crash_count >= 10 ? 'high' : cluster.crash_count >= 5 ? 'medium' : 'low';
+        const shortToken = cluster.dedup_token.split('--').slice(0, 3).join(' → ');
+        
+        html += `
+            <div class="card cluster-card">
+                <div class="cluster-header">
+                    <h3>Bug #${idx + 1} <span class="badge badge-${severity}">${severity.toUpperCase()}</span></h3>
+                    <span class="crash-count">${cluster.crash_count} crash${cluster.crash_count > 1 ? 'es' : ''}</span>
+                </div>
+                
+                ${cluster.ai_analysis ? `
+                    <div class="ai-analysis">
+                        <h4>🤖 AI Analysis</h4>
+                        <div class="bug-type"><strong>${cluster.ai_analysis.bug_type}</strong></div>
+                        <div class="affected-code">📍 ${cluster.ai_analysis.affected_code}</div>
+                        <p class="explanation">${cluster.ai_analysis.explanation || cluster.ai_analysis.root_cause}</p>
+                    </div>
+                ` : ''}
+                
+                <div class="cluster-meta">
+                    <div><strong>Dedup Token:</strong> ${shortToken}</div>
+                    <div><strong>Fuzzers:</strong> ${cluster.fuzzers.join(', ')}</div>
+                    <div><strong>Sanitizers:</strong> ${cluster.sanitizers.join(', ')}</div>
+                    <div><strong>First Seen:</strong> ${new Date(cluster.first_seen).toLocaleString()}</div>
+                </div>
+                <button class="btn btn-secondary" onclick="showClusterDetails(${idx})">View Full Analysis</button>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Show cluster details with full AI analysis
+function showClusterDetails(clusterIdx) {
+    const cluster = crashClusters.clusters[clusterIdx];
+    
+    let html = `
+        <h3>Bug #${clusterIdx + 1} - Security Analysis</h3>
+        
+        ${cluster.ai_analysis ? `
+            <div class="detail-section ai-analysis-detail">
+                <h4>🤖 AI Security Analysis</h4>
+                
+                <div class="analysis-header">
+                    <div class="severity-badge-large severity-${cluster.ai_analysis.severity.toLowerCase()}">
+                        ${cluster.ai_analysis.severity}
+                    </div>
+                    <div class="cwe-badge">
+                        ${cluster.ai_analysis.cwe}
+                    </div>
+                    <div class="exploit-badge exploit-${cluster.ai_analysis.exploitation_likelihood.toLowerCase()}">
+                        Exploitation: ${cluster.ai_analysis.exploitation_likelihood}
+                    </div>
+                </div>
+                
+                <div class="bug-summary">
+                    <h5>Bug Type</h5>
+                    <p class="bug-type-text">${cluster.ai_analysis.bug_type}</p>
+                </div>
+                
+                <div class="analysis-grid">
+                    <div class="analysis-item">
+                        <span class="analysis-label">📍 Affected Code</span>
+                        <span class="analysis-value code">${cluster.ai_analysis.affected_code}</span>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <h5>🔍 Root Cause</h5>
+                    <p>${cluster.ai_analysis.root_cause}</p>
+                </div>
+                
+                <div class="analysis-section">
+                    <h5>⚠️ Security Impact</h5>
+                    <p>${cluster.ai_analysis.security_impact}</p>
+                </div>
+                
+                <div class="analysis-section">
+                    <h5>🎯 Exploitation Analysis</h5>
+                    <p>${cluster.ai_analysis.exploitation_explanation}</p>
+                </div>
+                
+                <div class="analysis-section fix-section">
+                    <h5>🔧 Suggested Fix</h5>
+                    <p>${cluster.ai_analysis.suggested_fix}</p>
+                </div>
+            </div>
+        ` : ''}
+        
+        <div class="detail-section">
+            <h4>Cluster Summary</h4>
+            <div class="summary-grid">
+                <div><strong>Total Crashes:</strong> ${cluster.crash_count}</div>
+                <div><strong>Fuzzers:</strong> ${cluster.fuzzers.join(', ')}</div>
+                <div><strong>Sanitizers:</strong> ${cluster.sanitizers.join(', ')}</div>
+                <div><strong>First Seen:</strong> ${new Date(cluster.first_seen).toLocaleString()}</div>
+            </div>
+        </div>
+        
+        <div class="detail-section">
+            <h4>Deduplication Token</h4>
+            <pre class="dedup-token-detail">${cluster.dedup_token}</pre>
+        </div>
+        
+        <div class="detail-section">
+            <h4>Technical Details - Crash Reports (${cluster.povs.length} total)</h4>
+    `;
+    
+    cluster.povs.forEach((pov, idx) => {
+        html += `
+            <div class="pov-detail">
+                <div class="pov-header-detail">
+                    <span><strong>Crash #${idx + 1}</strong></span>
+                    <span class="pov-id">POV: ${pov.pov.pov_id}</span>
+                </div>
+                <p class="pov-task">Task: ${pov.task_name}</p>
+                ${pov.pov.stack_trace ? `
+                    <details>
+                        <summary><strong>📋 View Full Stack Trace</strong></summary>
+                        <pre class="stack-trace-detail">${pov.pov.stack_trace}</pre>
+                    </details>
+                ` : '<p style="color: #94a3b8;">No stack trace available</p>'}
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    elements.detailContent.innerHTML = html;
+    elements.detailTitle.textContent = `Bug #${clusterIdx + 1} - Security Analysis`;
+    elements.detailModal.style.display = 'block';
+}
+
 // Extract PoVs from tasks data
 function extractPovsFromTasks() {
     const povs = [];
@@ -349,6 +539,8 @@ function updateDashboard() {
         renderPovs();
     } else if (currentTab === 'patches') {
         renderPatches();
+    } else if (currentTab === 'crash-triage') {
+	renderCrashClusters();
     }
 }
 

@@ -7,6 +7,8 @@ import base64
 import json
 import logging
 import uuid
+import openai
+import os
 from datetime import datetime, timedelta
 from functools import cache
 from pathlib import Path
@@ -362,6 +364,8 @@ def pov_to_pov_info(pov: POV) -> dict[str, Any]:
             "fuzzer_name": getattr(pov, "fuzzer_name", "unknown"),
             "sanitizer": getattr(pov, "sanitizer", "unknown"),
             "testcase": base64.b64encode(getattr(pov, "testcase", b"")),
+            "stack_trace": getattr(pov, "stack_trace", None),
+            "dedup_token": getattr(pov, "dedup_token", None),
         }
     except Exception as e:
         logger.error(f"Error converting POV to info: {e}")
@@ -1182,6 +1186,8 @@ def post_v1_task_task_id_pov_(
         fuzzer_name=body.fuzzer_name,
         sanitizer=body.sanitizer,
         testcase=base64.b64decode(body.testcase),
+        stack_trace=body.stack_trace,
+        dedup_token=body.dedup_token,
     )
     save_pov(task_id, pov.pov_id, body.testcase)
 
@@ -1405,6 +1411,58 @@ def get_all_povs(database_manager: DatabaseManager = Depends(get_database_manage
     all_povs.sort(key=lambda x: x["pov"].get("timestamp", ""), reverse=True)
     return all_povs
 
+@app.get("/v1/dashboard/crash_clusters", tags=["dashboard"])
+def get_crash_clusters(database_manager: DatabaseManager = Depends(get_database_manager)) -> dict[str, Any]:
+    """Get crash clusters grouped by dedup_token with AI-generated explanations"""
+    clusters: dict[str, list[dict[str, Any]]] = {}
+    unclustered: list[dict[str, Any]] = []
+    
+    with database_manager.get_all_povs() as povs:
+        for pov in povs:
+            pov_dict = pov_to_pov_info(pov)
+            pov_data = {
+                "task_id": pov.task_id,
+                "task_name": pov.task.name or pov.task.project_name,
+                "pov": pov_dict,
+            }
+            
+            dedup_token = pov_dict.get("dedup_token")
+            if dedup_token:
+                if dedup_token not in clusters:
+                    clusters[dedup_token] = []
+                clusters[dedup_token].append(pov_data)
+            else:
+                unclustered.append(pov_data)
+    
+    # Convert to list format with cluster metadata and AI explanations
+    cluster_list = []
+    for dedup_token, povs in clusters.items():
+        # Get the first POV's stack trace for analysis
+        first_stack_trace = povs[0]["pov"].get("stack_trace", "")
+        
+        # Generate AI explanation
+        ai_analysis = generate_bug_explanation(first_stack_trace, dedup_token)
+        
+        cluster_list.append({
+            "dedup_token": dedup_token,
+            "crash_count": len(povs),
+            "first_seen": min(p["pov"]["timestamp"] for p in povs),
+            "last_seen": max(p["pov"]["timestamp"] for p in povs),
+            "fuzzers": list(set(p["pov"]["fuzzer_name"] for p in povs)),
+            "sanitizers": list(set(p["pov"]["sanitizer"] for p in povs)),
+            "povs": povs,
+            "ai_analysis": ai_analysis,  # NEW: AI-generated explanation
+        })
+    
+    # Sort by crash count (most crashes first)
+    cluster_list.sort(key=lambda x: x["crash_count"], reverse=True)
+    
+    return {
+        "clusters": cluster_list,
+        "unclustered": unclustered,
+        "total_clusters": len(cluster_list),
+        "total_crashes": sum(c["crash_count"] for c in cluster_list) + len(unclustered),
+    }
 
 @app.get("/v1/dashboard/patches", tags=["dashboard"])
 def get_all_patches(database_manager: DatabaseManager = Depends(get_database_manager)) -> list[dict[str, Any]]:
@@ -1425,3 +1483,107 @@ def get_all_patches(database_manager: DatabaseManager = Depends(get_database_man
     # Sort by timestamp descending
     all_patches.sort(key=lambda x: x["patch"].get("timestamp", ""), reverse=True)
     return all_patches
+
+def generate_bug_explanation(stack_trace: str, dedup_token: str) -> str:
+    """Use OpenAI to generate a comprehensive security analysis of the bug."""
+    try:
+        import json
+        import re
+
+        # Get OpenAI key from environment
+        openai_key = os.environ.get("OPENAI_API_KEY", "")
+        if not openai_key:
+            raise Exception("No OpenAI API key configured")
+
+        client = openai.OpenAI(api_key=openai_key)
+
+        prompt = f"""You are a security researcher analyzing a crash from a fuzzing campaign. Provide a comprehensive but concise security analysis.
+
+Dedup Token: {dedup_token}
+
+Stack Trace:
+{stack_trace[:3000]}
+
+Provide a detailed analysis with:
+
+1. **Bug Type**: One clear sentence describing the vulnerability type
+2. **Affected Code**: The primary file and line number where the bug occurs
+3. **Root Cause**: 2-3 sentences explaining what's happening at the code level
+4. **Security Impact**: 2-3 sentences explaining the potential security consequences
+5. **Severity**: Rate as CRITICAL, HIGH, MEDIUM, or LOW
+6. **CWE**: The most relevant Common Weakness Enumeration ID(s)
+7. **Suggested Fix**: 1-2 sentences with a high-level approach to fix
+8. **Exploitation Likelihood**: Rate as HIGH, MEDIUM, or LOW and explain in one sentence
+
+Respond ONLY with valid JSON (no markdown):
+{{
+  "bug_type": "...",
+  "affected_code": "...",
+  "root_cause": "...",
+  "security_impact": "...",
+  "severity": "HIGH|MEDIUM|LOW|CRITICAL",
+  "cwe": "CWE-###",
+  "suggested_fix": "...",
+  "exploitation_likelihood": "HIGH|MEDIUM|LOW",
+  "exploitation_explanation": "..."
+}}"""
+
+        response = client.chat.completions.create(
+            model="gpt-5.1-codex-max",  # Will use whatever GPT model your key has access to
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=16384,
+            temperature=0.3
+        )
+
+        response_text = response.choices[0].message.content.strip()
+
+        # Remove markdown code blocks if present
+        if "```" in response_text:
+            response_text = re.sub(r'```json\n?', '', response_text)
+            response_text = re.sub(r'```\n?', '', response_text)
+
+        return json.loads(response_text.strip())
+
+    except Exception as e:
+        logger.warning(f"AI analysis unavailable: {e}")
+
+        # Fallback parsing
+        import re
+        bug_type = "Unknown vulnerability"
+        affected_code = "Unknown"
+        severity = "MEDIUM"
+        cwe = "N/A"
+
+        if "UndefinedBehaviorSanitizer" in stack_trace:
+            bug_type = "Undefined Behavior detected by UBSan"
+            cwe = "CWE-758"
+        elif "AddressSanitizer" in stack_trace:
+            if "use-after-free" in stack_trace:
+                bug_type = "Heap use-after-free"
+                cwe = "CWE-416"
+                severity = "HIGH"
+            elif "buffer-overflow" in stack_trace:
+                bug_type = "Heap buffer overflow"
+                cwe = "CWE-122"
+                severity = "HIGH"
+            else:
+                bug_type = "Memory safety violation"
+                cwe = "CWE-119"
+
+        file_match = re.search(r'([a-zA-Z_][a-zA-Z0-9_]*\.c[pp]*):(\d+)', stack_trace)
+        if file_match:
+            affected_code = f"{file_match.group(1)}:{file_match.group(2)}"
+
+        functions = dedup_token.split('--')
+
+        return {
+            "bug_type": bug_type,
+            "affected_code": affected_code,
+            "root_cause": f"Crash in: {' → '.join(functions)}. Full analysis requires valid API key.",
+            "security_impact": "Could lead to memory corruption, crashes, or code execution. Manual review needed.",
+            "severity": severity,
+            "cwe": cwe,
+            "suggested_fix": "Review affected code for proper memory management and bounds checking.",
+            "exploitation_likelihood": "MEDIUM",
+            "exploitation_explanation": "Detailed analysis requires AI-powered assessment."
+        }

@@ -929,3 +929,413 @@ button.reject-button {
     max-height: 200px;
     overflow-y: auto;
 }
+
+/* ============================================
+   CRASH TRIAGE DASHBOARD STYLES
+   ============================================ */
+
+/* Cluster Cards */
+.cluster-card {
+    margin-bottom: 20px;
+}
+
+.cluster-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #334155;
+}
+
+.cluster-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+/* Severity Badges */
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-high {
+    background: #dc2626;
+    color: white;
+}
+
+.badge-medium {
+    background: #f59e0b;
+    color: white;
+}
+
+.badge-low {
+    background: #10b981;
+    color: white;
+}
+
+.crash-count {
+    background: #667eea;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* Cluster Metadata */
+.cluster-meta {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.cluster-meta div {
+    margin-bottom: 8px;
+    color: #e2e8f0;
+}
+
+.cluster-meta strong {
+    color: #94a3b8;
+}
+
+/* AI Analysis in Cards */
+.ai-analysis {
+    background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+    border: 1px solid #667eea;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.ai-analysis h4 {
+    margin: 0 0 10px 0;
+    color: #667eea;
+    font-size: 0.9em;
+}
+
+.ai-analysis .bug-type {
+    font-size: 1.1em;
+    color: #e2e8f0;
+    margin-bottom: 8px;
+}
+
+.ai-analysis .affected-code {
+    font-family: 'Courier New', monospace;
+    color: #f59e0b;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+.ai-analysis .explanation {
+    color: #cbd5e1;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Modal - Enhanced Security Analysis */
+.ai-analysis-detail {
+    background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+    border: 2px solid #667eea;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.ai-analysis-detail h4 {
+    color: #667eea;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+/* Analysis Header with Badges */
+.analysis-header {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.severity-badge-large {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1.1em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.severity-critical {
+    background: #dc2626;
+    color: white;
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.3);
+}
+
+.severity-high {
+    background: #ea580c;
+    color: white;
+}
+
+.severity-medium {
+    background: #f59e0b;
+    color: white;
+}
+
+.severity-low {
+    background: #10b981;
+    color: white;
+}
+
+.severity-unknown {
+    background: #6b7280;
+    color: white;
+}
+
+.cwe-badge {
+    padding: 10px 20px;
+    background: #334155;
+    color: #818cf8;
+    border-radius: 8px;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.exploit-badge {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.exploit-high {
+    background: #dc2626;
+    color: white;
+}
+
+.exploit-medium {
+    background: #f59e0b;
+    color: white;
+}
+
+.exploit-low {
+    background: #10b981;
+    color: white;
+}
+
+.exploit-unknown {
+    background: #6b7280;
+    color: white;
+}
+
+/* Bug Summary */
+.bug-summary {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #667eea;
+}
+
+.bug-summary h5 {
+    margin: 0 0 10px 0;
+    color: #94a3b8;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.bug-type-text {
+    font-size: 1.1em;
+    color: #e2e8f0;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Analysis Grid */
+.analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.analysis-item {
+    background: #0f172a;
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.analysis-label {
+    font-size: 0.85em;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.analysis-value {
+    font-size: 1.1em;
+    color: #e2e8f0;
+    font-weight: 600;
+}
+
+.analysis-value.code {
+    font-family: 'Courier New', monospace;
+    color: #f59e0b;
+}
+
+/* Analysis Sections */
+.analysis-section {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.analysis-section h5 {
+    margin: 0 0 10px 0;
+    color: #667eea;
+    font-size: 1em;
+}
+
+.analysis-section p {
+    margin: 0;
+    color: #e2e8f0;
+    line-height: 1.6;
+}
+
+.fix-section {
+    border-left: 4px solid #10b981;
+}
+
+.fix-section h5 {
+    color: #10b981;
+}
+
+/* Summary Grid */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.summary-grid div {
+    color: #e2e8f0;
+}
+
+/* Dedup Token Display */
+.dedup-token-detail {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #818cf8;
+    word-break: break-all;
+    border: 1px solid #334155;
+}
+
+/* POV Details */
+.pov-detail {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 3px solid #475569;
+}
+
+.pov-header-detail {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #334155;
+}
+
+.pov-id {
+    font-family: 'Courier New', monospace;
+    color: #818cf8;
+    font-size: 0.9em;
+}
+
+.pov-task {
+    color: #94a3b8;
+    margin-bottom: 10px;
+}
+
+.pov-detail details {
+    margin-top: 10px;
+}
+
+.pov-detail summary {
+    cursor: pointer;
+    color: #667eea;
+    font-weight: 600;
+    padding: 8px;
+    background: #1e293b;
+    border-radius: 4px;
+}
+
+.pov-detail summary:hover {
+    background: #334155;
+}
+
+/* Stack Trace - MAXIMUM CONTRAST */
+.stack-trace-detail {
+    background: #1e293b;  /* Slightly lighter background */
+    padding: 15px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.95em;  /* Slightly larger font */
+    line-height: 1.7;
+    overflow-x: auto;
+    margin-top: 10px;
+    border: 2px solid #64748b;  /* Thicker, more visible border */
+    max-height: 400px;
+    overflow-y: auto;
+    color: #f1f5f9;  /* Even lighter text - almost white */
+}
+
+.stack-trace {
+    background: #1e293b;  /* Slightly lighter background */
+    padding: 15px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.95em;
+    line-height: 1.7;
+    overflow-x: auto;
+    margin-top: 15px;
+    display: none;
+    border: 2px solid #64748b;
+    color: #f1f5f9;  /* Even lighter text */
+}
+.stack-trace.show {
+    display: block;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+}
+
+.empty-state h2 {
+    margin-bottom: 10px;
+    color: #cbd5e1;
+}
+
+.empty-state p {
+    margin-bottom: 20px;
+}

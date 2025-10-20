@@ -52,6 +52,7 @@
             <button class="tab-button active" data-tab="tasks">Tasks</button>
             <button class="tab-button" data-tab="povs">PoVs</button>
             <button class="tab-button" data-tab="patches">Patches</button>
+	    <button class="tab-button" data-tab="crash-triage">Crash Triage</button>
         </nav>
 
         <!-- Tab Content -->
@@ -91,6 +92,22 @@
                 </div>
                 <div class="artifacts-container" id="patches-container">
                     <!-- Patches will be populated dynamically -->
+                </div>
+            </section>
+
+	    <!-- Crash Triage Tab -->
+            <section id="crash-triage-tab" class="tab-pane">
+                <div class="section-header">
+                    <h2>Crash Triage Dashboard</h2>
+                    <p style="color: #94a3b8;">Automated crash clustering and vulnerability analysis</p>
+                </div>
+
+                <div class="crash-stats" id="crash-stats">
+                    <!-- Stats will be populated dynamically -->
+                </div>
+
+                <div class="clusters-container" id="clusters-container">
+                    <!-- Clusters will be populated dynamically -->
                 </div>
             </section>
         </div>

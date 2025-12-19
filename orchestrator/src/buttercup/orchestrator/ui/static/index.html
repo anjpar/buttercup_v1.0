@@ -52,7 +52,6 @@
             <button class="tab-button active" data-tab="tasks">Tasks</button>
             <button class="tab-button" data-tab="povs">PoVs</button>
             <button class="tab-button" data-tab="patches">Patches</button>
-	    <button class="tab-button" data-tab="crash-triage">Crash Triage</button>
         </nav>
 
         <!-- Tab Content -->
@@ -78,11 +77,24 @@
             <!-- PoVs Tab -->
             <section id="povs-tab" class="tab-pane">
                 <div class="section-header">
-                    <h2>All PoVs</h2>
+                    <h2>PoVs & Crash Analysis</h2>
+		    <div class="filter-controls">
+			<select id="task-filter-povs">
+			    <option value="All">All Tasks</option>
+			    <!-- Tasks will be populated dynamically -->
+			</select>
+		    </div>
                 </div>
-                <div class="artifacts-container" id="povs-container">
-                    <!-- PoVs will be populated dynamically -->
-                </div>
+
+		<!-- Stats Cards -->
+    		<div class="crash-stats" id="crash-stats-povs">
+        	    <!-- Stats will be populated dynamically -->
+		</div>
+
+    		<!-- Crash Clusters -->
+    		<div class="clusters-container" id="clusters-container-povs">
+        	    <!-- Clusters will be populated dynamically -->
+    		</div>
             </section>
 
             <!-- Patches Tab -->
@@ -95,21 +107,6 @@
                 </div>
             </section>
 
-	    <!-- Crash Triage Tab -->
-            <section id="crash-triage-tab" class="tab-pane">
-                <div class="section-header">
-                    <h2>Crash Triage Dashboard</h2>
-                    <p style="color: #94a3b8;">Automated crash clustering and vulnerability analysis</p>
-                </div>
-
-                <div class="crash-stats" id="crash-stats">
-                    <!-- Stats will be populated dynamically -->
-                </div>
-
-                <div class="clusters-container" id="clusters-container">
-                    <!-- Clusters will be populated dynamically -->
-                </div>
-            </section>
         </div>
     </main>
 

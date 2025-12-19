@@ -13,6 +13,7 @@ let dashboardConfig = {
 };
 let currentTab = 'tasks';
 let crashClusters = null;
+let selectedTaskIdForPovs = 'all';  // NEW: Track selected task
 
 // API base URL - will be set dynamically
 const API_BASE = '';
@@ -75,6 +76,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Event listeners
 function setupEventListeners() {
+    const taskFilterPovs = document.getElementById('task-filter-povs');
+	if (taskFilterPovs) {
+    	    taskFilterPovs.addEventListener('change', (e) => {
+       	    selectedTaskIdForPovs = e.target.value;
+            loadAndRenderCrashClusters();
+            });
+	}
     elements.submitTaskBtn.addEventListener('click', () => {
         elements.taskModal.style.display = 'block';
     });
@@ -218,8 +226,7 @@ async function loadDashboard() {
             loadStats(),
             loadAllPovs(),
             loadAllPatches(),
-            loadConfig(),
-	    loadCrashClusters()
+            loadConfig()
         ]);
         
         updateDashboard();
@@ -297,28 +304,131 @@ async function loadAllPatches() {
     }
 }
 
-// Load crash clusters
-async function loadCrashClusters() {
+// Extract PoVs from tasks data
+function extractPovsFromTasks() {
+    const povs = [];
+    tasks.forEach(task => {
+        (task.povs || []).forEach(pov => {
+            povs.push({
+                task_id: task.task_id,
+                task_name: task.name || task.project_name,
+                pov: pov
+            });
+        });
+    });
+    return povs.sort((a, b) => new Date(b.pov.timestamp || 0) - new Date(a.pov.timestamp || 0));
+}
+
+// Extract patches from tasks data
+function extractPatchesFromTasks() {
+    const patches = [];
+    tasks.forEach(task => {
+        (task.patches || []).forEach(patch => {
+            patches.push({
+                task_id: task.task_id,
+                task_name: task.name || task.project_name,
+                patch: patch
+            });
+        });
+    });
+    return patches.sort((a, b) => new Date(b.patch.timestamp || 0) - new Date(a.patch.timestamp || 0));
+}
+
+// Calculate stats from tasks data
+function calculateStatsFromTasks() {
+    dashboardStats.activeTasks = tasks.filter(task => task.status === 'active').length;
+    dashboardStats.totalPovs = tasks.reduce((sum, task) => sum + (task.povs || []).length, 0);
+    dashboardStats.totalPatches = tasks.reduce((sum, task) => sum + (task.patches || []).length, 0);
+    dashboardStats.totalBundles = tasks.reduce((sum, task) => sum + (task.bundles || []).length, 0);
+}
+
+// Update dashboard UI
+function updateDashboard() {
+    // Update stats
+    elements.activeTasks.textContent = dashboardStats.activeTasks;
+    elements.failedTasks.textContent = dashboardStats.failedTasks || 0;
+    elements.totalPovs.textContent = dashboardStats.totalPovs;
+    elements.totalPatches.textContent = dashboardStats.totalPatches;
+    elements.totalBundles.textContent = dashboardStats.totalBundles;
+    
+    // Update current tab content
+    if (currentTab === 'tasks') {
+        renderTasks();
+    } else if (currentTab === 'povs') {
+    	loadAndRenderCrashClusters();  // NEW: Load clusters instead of POVs
+    } else if (currentTab === 'patches') {
+        renderPatches();
+    }
+}
+
+async function loadAndRenderPovs() {
+    // Now loads and renders crash clusters instead of POVs
     try {
-        const response = await fetch(`${API_BASE}/v1/dashboard/crash_clusters`);
+        // Build URL with optional task filter
+        let url = `${API_BASE}/v1/dashboard/crash_clusters`;
+        if (selectedTaskIdForPovs !== 'all') {
+            url += `?task_id=${selectedTaskIdForPovs}`;
+        }
+        
+        const response = await fetch(url);
         crashClusters = await response.json();
-    	if (currentTab === 'crash-triage') {
-	    renderCrashClusters();
-	}
+        
+        // Render stats
+        renderCrashStatsForPovs();
+        
+        // Render clusters
+        renderCrashClustersForPovs();
+        
+        // Populate task filter dropdown
+        populateTaskFilterForPovs();
     } catch (error) {
         console.error('Error loading crash clusters:', error);
-	const container = document.getElementById('clusters-container');
+        const container = document.getElementById('clusters-container-povs');
         if (container) {
             container.innerHTML = '<div class="empty-state"><p>Error loading crash data</p></div>';
         }
     }
 }
 
-// Render crash clusters
-function renderCrashClusters() {
+// Load and render patches
+async function loadAndRenderPatches() {
+    await loadAllPatches();
+    renderPatches();
+}
+
+// Load and render crash clusters for POVs tab
+async function loadAndRenderCrashClusters() {
+    try {
+        // Build URL with optional task filter
+        let url = `${API_BASE}/v1/dashboard/crash_clusters`;
+        if (selectedTaskIdForPovs !== 'all') {
+            url += `?task_id=${selectedTaskIdForPovs}`;
+        }
+        
+        const response = await fetch(url);
+        crashClusters = await response.json();
+        
+        // Render stats
+        renderCrashStatsForPovs();
+        
+        // Render clusters
+        renderCrashClustersForPovs();
+        
+        // Populate task filter dropdown
+        populateTaskFilterForPovs();
+    } catch (error) {
+        console.error('Error loading crash clusters:', error);
+        const container = document.getElementById('clusters-container-povs');
+        if (container) {
+            container.innerHTML = '<div class="empty-state"><p>Error loading crash data</p></div>';
+        }
+    }
+}
+
+// Render stats for POVs tab
+function renderCrashStatsForPovs() {
     if (!crashClusters) return;
-    
-    // Render stats
+
     const statsHtml = `
         <div class="card">
             <h3>Total Crashes</h3>
@@ -333,34 +443,38 @@ function renderCrashClusters() {
             <div class="stat-number">${crashClusters.unclustered.length}</div>
         </div>
     `;
-    
-    const statsContainer = document.getElementById('crash-stats');
+
+    const statsContainer = document.getElementById('crash-stats-povs');
     if (statsContainer) {
         statsContainer.innerHTML = statsHtml;
         statsContainer.className = 'status-cards';
     }
-    
-    // Render clusters
-    const container = document.getElementById('clusters-container');
+}
+
+// Render crash clusters for POVs tab
+function renderCrashClustersForPovs() {
+    if (!crashClusters) return;
+
+    const container = document.getElementById('clusters-container-povs');
     if (!container) return;
-    
+
     if (crashClusters.clusters.length === 0) {
-        container.innerHTML = '<div class="empty-state"><p>No crash clusters found yet. Keep fuzzing!</p></div>';
+        container.innerHTML = '<div class="empty-state"><p>No crash clusters found. Keep fuzzing!</p></div>';
         return;
     }
-    
+
     let html = '';
     crashClusters.clusters.forEach((cluster, idx) => {
         const severity = cluster.crash_count >= 10 ? 'high' : cluster.crash_count >= 5 ? 'medium' : 'low';
         const shortToken = cluster.dedup_token.split('--').slice(0, 3).join(' → ');
-        
+
         html += `
             <div class="card cluster-card">
                 <div class="cluster-header">
                     <h3>Bug #${idx + 1} <span class="badge badge-${severity}">${severity.toUpperCase()}</span></h3>
                     <span class="crash-count">${cluster.crash_count} crash${cluster.crash_count > 1 ? 'es' : ''}</span>
                 </div>
-                
+
                 ${cluster.ai_analysis ? `
                     <div class="ai-analysis">
                         <h4>🤖 AI Analysis</h4>
@@ -369,22 +483,62 @@ function renderCrashClusters() {
                         <p class="explanation">${cluster.ai_analysis.explanation || cluster.ai_analysis.root_cause}</p>
                     </div>
                 ` : ''}
-                
+
                 <div class="cluster-meta">
-                    <div><strong>Dedup Token:</strong> ${shortToken}</div>
                     <div><strong>Fuzzers:</strong> ${cluster.fuzzers.join(', ')}</div>
                     <div><strong>Sanitizers:</strong> ${cluster.sanitizers.join(', ')}</div>
-                    <div><strong>First Seen:</strong> ${new Date(cluster.first_seen).toLocaleString()}</div>
                 </div>
+
+                <details class="pov-list-details">
+                    <summary><strong>📋 Individual POVs (${cluster.povs.length})</strong></summary>
+                    <div class="pov-list">
+                        ${cluster.povs.map(pov => `
+                            <div class="pov-item-small">
+                                <span class="pov-id">POV: ${pov.pov.pov_id.substring(0, 8)}...</span>
+                                <span class="pov-fuzzer">${pov.pov.fuzzer_name}</span>
+                                <span class="pov-time">${new Date(pov.pov.timestamp).toLocaleString()}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </details>
+
                 <button class="btn btn-secondary" onclick="showClusterDetails(${idx})">View Full Analysis</button>
             </div>
         `;
     });
-    
+
     container.innerHTML = html;
 }
 
-// Show cluster details with full AI analysis
+// Populate task filter dropdown
+function populateTaskFilterForPovs() {
+    const select = document.getElementById('task-filter-povs');
+    if (!select) return;
+    
+    // Get unique tasks from current clusters
+    const taskIds = new Set();
+    if (crashClusters && crashClusters.clusters) {
+        crashClusters.clusters.forEach(cluster => {
+            cluster.povs.forEach(pov => {
+                taskIds.add(pov.task_id);
+            });
+        });
+    }
+    
+    // Keep "All Tasks" option, add individual tasks
+    let options = '<option value="all">All Tasks</option>';
+    
+    // Get task names from the tasks list
+    tasks.forEach(task => {
+        if (taskIds.has(task.task_id)) {
+            options += `<option value="${task.task_id}" ${selectedTaskIdForPovs === task.task_id ? 'selected' : ''}>${task.name || task.project_name}</option>`;
+        }
+    });
+    
+    select.innerHTML = options;
+}
+
+// Show cluster details modal
 function showClusterDetails(clusterIdx) {
     const cluster = crashClusters.clusters[clusterIdx];
     
@@ -483,112 +637,6 @@ function showClusterDetails(clusterIdx) {
     elements.detailContent.innerHTML = html;
     elements.detailTitle.textContent = `Bug #${clusterIdx + 1} - Security Analysis`;
     elements.detailModal.style.display = 'block';
-}
-
-// Extract PoVs from tasks data
-function extractPovsFromTasks() {
-    const povs = [];
-    tasks.forEach(task => {
-        (task.povs || []).forEach(pov => {
-            povs.push({
-                task_id: task.task_id,
-                task_name: task.name || task.project_name,
-                pov: pov
-            });
-        });
-    });
-    return povs.sort((a, b) => new Date(b.pov.timestamp || 0) - new Date(a.pov.timestamp || 0));
-}
-
-// Extract patches from tasks data
-function extractPatchesFromTasks() {
-    const patches = [];
-    tasks.forEach(task => {
-        (task.patches || []).forEach(patch => {
-            patches.push({
-                task_id: task.task_id,
-                task_name: task.name || task.project_name,
-                patch: patch
-            });
-        });
-    });
-    return patches.sort((a, b) => new Date(b.patch.timestamp || 0) - new Date(a.patch.timestamp || 0));
-}
-
-// Calculate stats from tasks data
-function calculateStatsFromTasks() {
-    dashboardStats.activeTasks = tasks.filter(task => task.status === 'active').length;
-    dashboardStats.totalPovs = tasks.reduce((sum, task) => sum + (task.povs || []).length, 0);
-    dashboardStats.totalPatches = tasks.reduce((sum, task) => sum + (task.patches || []).length, 0);
-    dashboardStats.totalBundles = tasks.reduce((sum, task) => sum + (task.bundles || []).length, 0);
-}
-
-// Update dashboard UI
-function updateDashboard() {
-    // Update stats
-    elements.activeTasks.textContent = dashboardStats.activeTasks;
-    elements.failedTasks.textContent = dashboardStats.failedTasks || 0;
-    elements.totalPovs.textContent = dashboardStats.totalPovs;
-    elements.totalPatches.textContent = dashboardStats.totalPatches;
-    elements.totalBundles.textContent = dashboardStats.totalBundles;
-    
-    // Update current tab content
-    if (currentTab === 'tasks') {
-        renderTasks();
-    } else if (currentTab === 'povs') {
-        renderPovs();
-    } else if (currentTab === 'patches') {
-        renderPatches();
-    } else if (currentTab === 'crash-triage') {
-	renderCrashClusters();
-    }
-}
-
-// Load and render PoVs
-async function loadAndRenderPovs() {
-    await loadAllPovs();
-    renderPovs();
-}
-
-// Load and render patches
-async function loadAndRenderPatches() {
-    await loadAllPatches();
-    renderPatches();
-}
-
-// Render PoVs list
-function renderPovs() {
-    if (!elements.povsContainer) {
-        console.error('PoVs container not found!');
-        return;
-    }
-    
-    if (allPovs.length === 0) {
-        elements.povsContainer.innerHTML = `
-            <div class="no-data">
-                <div class="no-data-icon">🐛</div>
-                <p>No PoVs found</p>
-            </div>
-        `;
-        return;
-    }
-    
-    elements.povsContainer.innerHTML = allPovs.map(item => `
-        <div class="artifact-list-item" onclick="showArtifactDetail('pov', '${item.pov.pov_id}')">
-            <div class="artifact-info">
-                <div class="artifact-task-name">Task: ${item.task_name}</div>
-                <div class="artifact-meta">
-                    <span>ID: ${item.pov.pov_id}</span>
-                    <span>Architecture: ${item.pov.architecture || 'N/A'}</span>
-                    <span>Engine: ${item.pov.engine || 'N/A'}</span>
-                </div>
-                <div class="artifact-timestamp">${formatTimestamp(item.pov.timestamp)}</div>
-            </div>
-            <button class="download-button" onclick="event.stopPropagation(); downloadArtifact('pov', '${item.task_id}', '${item.pov.pov_id}')">
-                Download
-            </button>
-        </div>
-    `).join('');
 }
 
 // Render patches list

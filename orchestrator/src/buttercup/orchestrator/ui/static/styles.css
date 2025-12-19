@@ -1339,3 +1339,63 @@ button.reject-button {
 .empty-state p {
     margin-bottom: 20px;
 }
+
+/* POV List in Clusters */
+.pov-list-details {
+    margin-top: 15px;
+}
+
+.pov-list-details summary {
+    cursor: pointer;
+    color: #667eea;
+    font-weight: 600;
+    padding: 10px;
+    background: #1e293b;
+    border-radius: 6px;
+    user-select: none;
+}
+
+.pov-list-details summary:hover {
+    background: #334155;
+}
+
+.pov-list {
+    margin-top: 10px;
+    background: #0f172a;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.pov-item-small {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1.5fr;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #1e293b;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+
+.pov-item-small:last-child {
+    margin-bottom: 0;
+}
+
+.pov-id {
+    font-family: 'Courier New', monospace;
+    color: #818cf8;
+}
+
+.pov-fuzzer {
+    color: #94a3b8;
+}
+
+.pov-time {
+    color: #64748b;
+    font-size: 0.85em;
+}
+
+/* Task Filter for POVs */
+#task-filter-povs {
+    min-width: 200px;
+}

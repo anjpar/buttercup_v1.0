@@ -1412,13 +1412,21 @@ def get_all_povs(database_manager: DatabaseManager = Depends(get_database_manage
     return all_povs
 
 @app.get("/v1/dashboard/crash_clusters", tags=["dashboard"])
-def get_crash_clusters(database_manager: DatabaseManager = Depends(get_database_manager)) -> dict[str, Any]:
-    """Get crash clusters grouped by dedup_token with AI-generated explanations"""
+def get_crash_clusters(task_id: str | None = None, database_manager: DatabaseManager = Depends(get_database_manager)) -> dict[str, Any]:
+    """Get crash clusters grouped by dedup_token with AI-generated explanations
+    
+    Args:
+        task_id: Optional task ID to filter crashes for a specific task
+    """
     clusters: dict[str, list[dict[str, Any]]] = {}
     unclustered: list[dict[str, Any]] = []
     
     with database_manager.get_all_povs() as povs:
         for pov in povs:
+            # Filter by task if specified
+            if task_id and pov.task_id != task_id:
+                continue
+
             pov_dict = pov_to_pov_info(pov)
             pov_data = {
                 "task_id": pov.task_id,
@@ -1485,17 +1493,17 @@ def get_all_patches(database_manager: DatabaseManager = Depends(get_database_man
     return all_patches
 
 def generate_bug_explanation(stack_trace: str, dedup_token: str) -> str:
-    """Use OpenAI to generate a comprehensive security analysis of the bug."""
+    """Use LiteLLM proxy to generate a comprehensive security analysis of the bug.."""
     try:
         import json
         import re
+        import openai
 
-        # Get OpenAI key from environment
-        openai_key = os.environ.get("OPENAI_API_KEY", "")
-        if not openai_key:
-            raise Exception("No OpenAI API key configured")
-
-        client = openai.OpenAI(api_key=openai_key)
+        # Use LiteLLM proxy
+        client = openai.OpenAI(
+            api_key=os.environ.get("BUTTERCUP_LITELLM_KEY", "dummy"),
+            base_url="http://buttercup-litellm:4000"
+        )
 
         prompt = f"""You are a security researcher analyzing a crash from a fuzzing campaign. Provide a comprehensive but concise security analysis.
 
@@ -1529,10 +1537,10 @@ Respond ONLY with valid JSON (no markdown):
 }}"""
 
         response = client.chat.completions.create(
-            model="gpt-5.1-codex-max",  # Will use whatever GPT model your key has access to
+            model="azure-gpt-4o",  # Will use whatever GPT model your key has access to
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=16384,
-            temperature=0.3
+            max_tokens=1000,
+            temperature=0.3 
         )
 
         response_text = response.choices[0].message.content.strip()

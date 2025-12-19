@@ -396,6 +396,7 @@ Service-specific environment variables that utilize the standardized variables
     secretKeyRef:
       name: ghcr
       key: username
+{{- include "buttercup.env.llm" (merge (dict "secretName" "buttercup-litellm-api-secrets" "secretKey" "BUTTERCUP_LITELLM_KEY") .) | nindent 0 }}
 {{- end }}
 
 

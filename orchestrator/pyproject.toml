@@ -7,6 +7,7 @@ authors = [{ name = "Trail of Bits", email = "opensource@trailofbits.com" }]
 license = "AGPL-3.0-only"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "aiohttp>=3.9.0",
     "argon2-cffi ~=21.3.0",
     "common[full]",
     "fastapi ~=0.115.6",

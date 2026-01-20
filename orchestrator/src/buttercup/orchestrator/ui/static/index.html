@@ -3,14 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buttercup CRS Dashboard</title>
+    <title>Talonera - Firmware Security Analysis</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <h1 class="nav-title">Buttercup CRS Dashboard</h1>
-            <div class="nav-buttons">
+            <h1 class="nav-title">
+   		Talonera
+    	    	<div style="font-size: 0.5em; font-weight: 300; color: #95a5a6; margin-top: -5px;">
+        		Powered by Buttercup
+    	    	</div>
+	    </h1>
+		<div class="nav-buttons">
                 <button id="submit-task-btn" class="btn btn-primary">Submit Task</button>
                 <button id="refresh-btn" class="btn btn-secondary">Refresh</button>
             </div>
@@ -52,6 +57,7 @@
             <button class="tab-button active" data-tab="tasks">Tasks</button>
             <button class="tab-button" data-tab="povs">PoVs</button>
             <button class="tab-button" data-tab="patches">Patches</button>
+	    <button class="tab-button" data-tab="static-analysis">🔍 Static Analysis</button>
         </nav>
 
         <!-- Tab Content -->
@@ -106,7 +112,41 @@
                     <!-- Patches will be populated dynamically -->
                 </div>
             </section>
+	
+	    <!-- Static Analysis Tab -->
+	    <section id="static-analysis-tab" class="tab-pane"> 
+                <div class="section-header">
+                    <h2>🔍 Static Analysis Results</h2>
+                    <div class="filter-controls">
+                        <select id="static-severity-filter" onchange="loadStaticAnalysis()">
+                            <option value="">All Severities</option>
+                            <option value="error">Errors</option>
+                            <option value="warning">Warnings</option>
+                            <option value="info">Info</option>
+                        </select>
+                        <button onclick="loadStaticAnalysis()" class="refresh-btn">🔄 Refresh</button>
+                    </div>
+                </div>
 
+                <div id="static-stats-cards" class="stats-cards"></div>
+
+                <div class="view-toggle">
+                    <button id="static-cluster-view-btn" class="active" onclick="showStaticClusterView()">
+                        📊 Cluster View
+                    </button>
+                    <button id="static-list-view-btn" onclick="showStaticListView()">
+                        📋 List View
+                    </button>
+                </div>
+
+                <div id="static-cluster-view">
+                    <div id="static-clusters-container"></div>
+                </div>
+
+                <div id="static-list-view" style="display: none;">
+                    <div id="static-findings-list"></div>
+                </div>
+            </section>
         </div>
     </main>
 

@@ -28,12 +28,27 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM python:${PYTHON_BASE} AS runtime
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get install -y git curl && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y \
+    git \
+    curl \
+    clang-tidy \ 
+    cppcheck \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://get.docker.com | sh
 
+# Copy uv from the official image
+COPY --from=ghcr.io/astral-sh/uv:0.5.20 /uv /bin/uv
+
 COPY --from=builder --chown=app:app /app/orchestrator/.venv /app/orchestrator/.venv
+
+# Copy the static analyzer code
+COPY orchestrator/src/buttercup/orchestrator/static_analyzer /app/orchestrator/.venv/lib/python3.12/site-packages/buttercup/orchestrator/static_analyzer
+
+# Install static analyzer dependencies
+RUN uv pip install --python /app/orchestrator/.venv/bin/python \
+    aiohttp>=3.9.0
+
 WORKDIR /app/orchestrator
 ENV PATH=/app/orchestrator/.venv/bin:$PATH
 

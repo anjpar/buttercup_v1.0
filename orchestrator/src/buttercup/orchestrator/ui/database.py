@@ -10,6 +10,7 @@ from sqlalchemy import (
     BLOB,
     DateTime,
     ForeignKey,
+    Column,
     Integer,
     String,
     Text,
@@ -53,7 +54,7 @@ class Task(Base):
     povs: Mapped[list["POV"]] = relationship("POV", back_populates="task", cascade="all, delete-orphan")
     patches: Mapped[list["Patch"]] = relationship("Patch", back_populates="task", cascade="all, delete-orphan")
     bundles: Mapped[list["Bundle"]] = relationship("Bundle", back_populates="task", cascade="all, delete-orphan")
-
+    static_findings = relationship("StaticAnalysisFinding", back_populates="task")
 
 class POV(Base):
     """POV (Proof of Vulnerability) model."""
@@ -419,3 +420,51 @@ class DatabaseManager:
             session.delete(bundle)
             session.commit()
             logger.info(f"Deleted bundle: {bundle.bundle_id}")
+
+
+class StaticAnalysisFinding(Base):
+    """Static analysis finding from analyzer bot."""
+    __tablename__ = "static_analysis_findings"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(String, ForeignKey('tasks.task_id'), nullable=False, index=True)
+    tool_name = Column(String, nullable=False, index=True)
+    file_path = Column(String, nullable=False)
+    line_number = Column(Integer, nullable=False)
+    column = Column(Integer, nullable=False)
+    severity = Column(String, nullable=False, index=True)
+    message = Column(Text, nullable=False)
+    rule_id = Column(String, nullable=False, index=True)
+    code_snippet = Column(Text, nullable=True)
+    dedup_token = Column(String, nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    task = relationship("Task", back_populates="static_findings")
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'task_id': self.task_id,
+            'tool_name': self.tool_name,
+            'file_path': self.file_path,
+            'line_number': self.line_number,
+            'column': self.column,
+            'severity': self.severity,
+            'message': self.message,
+            'rule_id': self.rule_id,
+            'code_snippet': self.code_snippet,
+            'dedup_token': self.dedup_token,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# ADD THIS FUNCTION at the end:
+def generate_static_analysis_dedup_token(file_path: str, line_number: int, rule_id: str) -> str:
+    """Generate deduplication token for static analysis findings."""
+    import hashlib
+    from pathlib import Path
+    
+    filename = Path(file_path).name
+    dedup_string = f"{filename}:{line_number}:{rule_id}"
+    token = hashlib.sha256(dedup_string.encode()).hexdigest()[:16]
+    return f"static-{token}"

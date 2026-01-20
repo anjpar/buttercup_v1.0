@@ -1,0 +1,15 @@
+# Static Analyzer Bot Requirements
+
+# Core dependencies (none - uses stdlib only!)
+# The concurrency library is included in the repo
+
+# Optional: If you want to use type checking
+# mypy>=1.0.0
+
+# Optional: For testing
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+
+# Note: The static analysis tools themselves need to be installed separately:
+# - clang-tidy: Part of LLVM/Clang (apt-get install clang-tidy)
+# - cppcheck: apt-get install cppcheck

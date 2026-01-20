@@ -1399,3 +1399,227 @@ button.reject-button {
 #task-filter-povs {
     min-width: 200px;
 }
+
+/* Static Analysis Styles */
+.stats-cards {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    flex: 1;
+    min-width: 150px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    border-left: 4px solid #3498db;
+}
+
+.stat-card.error { border-left-color: #e74c3c; }
+.stat-card.warning { border-left-color: #f39c12; }
+.stat-card.info { border-left-color: #3498db; }
+
+.stat-number {
+    font-size: 32px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #7f8c8d;
+    text-transform: uppercase;
+}
+
+.view-toggle {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.view-toggle button {
+    padding: 10px 20px;
+    border: 2px solid #ddd;
+    background: white;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.3s;
+}
+
+.view-toggle button.active {
+    background: #3498db;
+    color: white;
+    border-color: #3498db;
+}
+
+.cluster-card {
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #3498db;
+}
+
+.cluster-card.error { border-left-color: #e74c3c; }
+.cluster-card.warning { border-left-color: #f39c12; }
+.cluster-card.info { border-left-color: #3498db; }
+
+.cluster-header {
+    padding: 15px 20px;
+    cursor: pointer;
+    background: #f8f9fa;
+}
+
+.cluster-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.cluster-meta {
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.cluster-body {
+    padding: 20px;
+}
+
+.finding-message {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+.cluster-details {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid #e9ecef;
+}
+
+.severity-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.severity-badge.error { background: #e74c3c; color: white; }
+.severity-badge.warning { background: #f39c12; color: white; }
+.severity-badge.info { background: #3498db; color: white; }
+
+.tool-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background: #6c757d;
+    color: white;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.finding-count {
+    background: #6c757d;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.file-group {
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.file-header {
+    padding: 15px 20px;
+    background: #f8f9fa;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.file-stats {
+    display: flex;
+    gap: 15px;
+    font-size: 13px;
+}
+
+.file-stats span {
+    padding: 3px 8px;
+    border-radius: 3px;
+}
+
+.file-stats .error { background: #ffebee; color: #c62828; }
+.file-stats .warning { background: #fff8e1; color: #f57c00; }
+.file-stats .info { background: #e3f2fd; color: #1565c0; }
+
+.file-findings {
+    padding: 15px;
+}
+
+.findings-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.findings-table thead {
+    background: #f8f9fa;
+}
+
+.findings-table th {
+    padding: 10px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.findings-table td {
+    padding: 10px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.findings-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.findings-table tr.error { background: #ffebee; }
+.findings-table tr.warning { background: #fff8e1; }
+.findings-table tr.info { background: #e3f2fd; }
+
+.view-details-btn {
+    margin-top: 15px;
+    padding: 8px 16px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.view-details-btn:hover {
+    background: #2980b9;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+}

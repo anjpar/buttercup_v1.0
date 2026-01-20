@@ -14,10 +14,14 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from collections import defaultdict
+
+import subprocess
+import tempfile
 
 from buttercup.common.telemetry import crs_instance_id
 from buttercup.orchestrator.ui.competition_api.models.types import (
@@ -43,7 +47,7 @@ from buttercup.orchestrator.ui.competition_api.models.types import (
 )
 from buttercup.orchestrator.ui.competition_api.services import ChallengeService, CRSClient
 from buttercup.orchestrator.ui.config import Settings
-from buttercup.orchestrator.ui.database import POV, Bundle, DatabaseManager, Patch, Task
+from buttercup.orchestrator.ui.database import POV, Bundle, DatabaseManager, Patch, Task, StaticAnalysisFinding, generate_static_analysis_dedup_token
 
 logger = logging.getLogger(__name__)
 
@@ -1595,3 +1599,294 @@ Respond ONLY with valid JSON (no markdown):
             "exploitation_likelihood": "MEDIUM",
             "exploitation_explanation": "Detailed analysis requires AI-powered assessment."
         }
+
+# ============================================================================
+# Static Analysis Endpoints
+# ============================================================================
+
+@app.get("/v1/dashboard/static_findings")
+def get_static_findings(
+    task_id: str | None = None,
+    tool_name: str | None = None,
+    severity: str | None = None,
+    database_manager: DatabaseManager = Depends(get_database_manager)
+) -> dict[str, Any]:
+    """Get static analysis findings with optional filtering."""
+    session = database_manager.get_session()
+    
+    try:
+        query = session.query(StaticAnalysisFinding)
+        
+        if task_id:
+            query = query.filter(StaticAnalysisFinding.task_id == task_id)
+        if tool_name:
+            query = query.filter(StaticAnalysisFinding.tool_name == tool_name)
+        if severity:
+            query = query.filter(StaticAnalysisFinding.severity == severity)
+        
+        findings = query.order_by(
+            StaticAnalysisFinding.severity.desc(),
+            StaticAnalysisFinding.created_at.desc()
+        ).all()
+        
+        stats = {
+            'total': len(findings),
+            'by_severity': {
+                'error': len([f for f in findings if f.severity == 'error']),
+                'warning': len([f for f in findings if f.severity == 'warning']),
+                'info': len([f for f in findings if f.severity == 'info']),
+            },
+        }
+        
+        return {
+            'findings': [f.to_dict() for f in findings],
+            'total': len(findings),
+            'stats': stats,
+        }
+    
+    finally:
+        session.close()
+
+
+@app.get("/v1/dashboard/static_clusters")
+def get_static_clusters(
+    task_id: str | None = None,
+    database_manager: DatabaseManager = Depends(get_database_manager)
+) -> dict[str, Any]:
+    """Get static analysis findings clustered by dedup_token."""
+    session = database_manager.get_session()
+    
+    try:
+        query = session.query(StaticAnalysisFinding)
+        
+        if task_id:
+            query = query.filter(StaticAnalysisFinding.task_id == task_id)
+        
+        all_findings = query.all()
+        
+        clusters = defaultdict(list)
+        unclustered = []
+        
+        for finding in all_findings:
+            if finding.dedup_token:
+                clusters[finding.dedup_token].append(finding)
+            else:
+                unclustered.append(finding)
+        
+        cluster_list = []
+        
+        for idx, (dedup_token, findings) in enumerate(sorted(clusters.items()), 1):
+            severity_priority = {'error': 3, 'warning': 2, 'info': 1}
+            highest_severity = max(findings, key=lambda f: severity_priority.get(f.severity, 0)).severity
+            
+            tool_names = sorted(set(f.tool_name for f in findings))
+            file_paths = sorted(set(f.file_path for f in findings))
+            
+            representative = findings[0]
+            
+            cluster_list.append({
+                'cluster_id': idx,
+                'dedup_token': dedup_token,
+                'count': len(findings),
+                'severity': highest_severity,
+                'rule_id': representative.rule_id,
+                'message': representative.message,
+                'tool_names': tool_names,
+                'file_paths': file_paths,
+                'line_number': representative.line_number,
+                'first_seen': min(f.created_at for f in findings).isoformat(),
+                'last_seen': max(f.created_at for f in findings).isoformat(),
+                'findings': [f.to_dict() for f in findings],
+            })
+        
+        stats = {
+            'total_findings': len(all_findings),
+            'unique_issues': len(clusters),
+            'unclustered': len(unclustered),
+            'by_severity': {
+                'error': len([f for f in all_findings if f.severity == 'error']),
+                'warning': len([f for f in all_findings if f.severity == 'warning']),
+                'info': len([f for f in all_findings if f.severity == 'info']),
+            },
+        }
+        
+        return {
+            'clusters': cluster_list,
+            'unclustered': [f.to_dict() for f in unclustered],
+            'stats': stats,
+        }
+    
+    finally:
+        session.close()
+
+
+@app.post("/v1/submit/static_analysis")
+def submit_static_analysis_results(
+    request: dict[str, Any],
+    database_manager: DatabaseManager = Depends(get_database_manager)
+) -> dict[str, Any]:
+    """Submit static analysis results from the analyzer bot."""
+    session = database_manager.get_session()
+    
+    try:
+        task_id = request.get('task_id')
+        findings = request.get('findings', [])
+        
+        submitted = 0
+        duplicates = 0
+        
+        for finding_data in findings:
+            dedup_token = generate_static_analysis_dedup_token(
+                finding_data['file_path'],
+                finding_data['line_number'],
+                finding_data['rule_id']
+            )
+            
+            existing = session.query(StaticAnalysisFinding).filter(
+                StaticAnalysisFinding.task_id == task_id,
+                StaticAnalysisFinding.dedup_token == dedup_token
+            ).first()
+            
+            if existing:
+                duplicates += 1
+                continue
+            
+            finding = StaticAnalysisFinding(
+                task_id=task_id,
+                tool_name=finding_data['tool_name'],
+                file_path=finding_data['file_path'],
+                line_number=finding_data['line_number'],
+                column=finding_data['column'],
+                severity=finding_data['severity'],
+                message=finding_data['message'],
+                rule_id=finding_data['rule_id'],
+                code_snippet=finding_data.get('code_snippet'),
+                dedup_token=dedup_token,
+            )
+            
+            session.add(finding)
+            submitted += 1
+        
+        session.commit()
+        
+        return {
+            'success': True,
+            'submitted': submitted,
+            'duplicates_skipped': duplicates,
+        }
+    
+    except Exception as e:
+        session.rollback()
+        return {
+            'success': False,
+            'error': str(e)
+        }
+    
+    finally:
+        session.close()
+
+async def run_static_analysis_task(repo_url: str, ref: str, task_id: str):
+    """Background task to clone repo and run static analysis."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"Starting static analysis for {task_id}")
+        
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            logger.info(f"Cloning {repo_url} (ref: {ref}) to {tmp_dir}")
+            
+            clone_result = subprocess.run(
+                ['git', 'clone', '--depth', '1', '-b', ref, repo_url, tmp_dir],
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+            
+            if clone_result.returncode != 0:
+                logger.error(f"Git clone failed: {clone_result.stderr}")
+                return
+            
+            logger.info(f"Repository cloned successfully")
+            
+            # NEW PATH - use the bundled analyzer
+            analyzer_module = 'buttercup.orchestrator.static_analyzer.analyzer_bot'
+            
+            logger.info(f"Running static analysis on {tmp_dir}")
+            
+            analysis_result = subprocess.run(
+                ['python3', '-m', analyzer_module, tmp_dir, task_id],
+                capture_output=True,
+                text=True,
+                timeout=600,
+                env={**os.environ, 'PYTHONPATH': '/app'}  # Ensure Python can find modules
+            )
+            
+            if analysis_result.returncode == 0:
+                logger.info(f"Static analysis completed successfully for {task_id}")
+                logger.info(f"Output: {analysis_result.stdout}")
+            else:
+                logger.error(f"Static analysis failed: {analysis_result.stderr}")
+                logger.error(f"Stdout: {analysis_result.stdout}")
+                
+    except subprocess.TimeoutExpired as e:
+        logger.error(f"Static analysis timeout for {task_id}: {e}")
+    except Exception as e:
+        logger.error(f"Static analysis error for {task_id}: {e}", exc_info=True)
+
+@app.post("/webhook/trigger_combined_task")
+async def trigger_combined_task(
+    body: Challenge,
+    background_tasks: BackgroundTasks,
+    challenge_service: ChallengeService = Depends(get_challenge_service),
+    crs_client: CRSClient = Depends(get_crs_client),
+    database_manager: DatabaseManager = Depends(get_database_manager),
+) -> dict[str, Any]:
+    """Trigger both fuzzing task and static analysis."""
+    logger.info(f"Triggering combined task: {body.model_dump()}")
+
+    # Step 1: Submit fuzzing task
+    from concurrent.futures import ThreadPoolExecutor
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+    fuzz_response = await loop.run_in_executor(
+        None,
+        trigger_task,
+        body,
+        challenge_service,
+        crs_client,
+        database_manager
+    )
+
+    if isinstance(fuzz_response, Error):
+        logger.error(f"Fuzzing task failed: {fuzz_response.message}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Fuzzing task submission failed: {fuzz_response.message}"
+        )
+    # Step 2: Run static analysis in a separate thread
+    repo_url = body.challenge_repo_url
+    repo_ref = body.challenge_repo_head_ref
+    task_name = body.name or "unnamed-task"
+    static_task_id = f"{task_name}-static"
+    
+    logger.info(f"!!! STARTING STATIC ANALYSIS THREAD !!!")
+    logger.info(f"Task: {static_task_id}, Repo: {repo_url}, Branch: {repo_ref}")
+    
+    import threading
+    
+    def run_analysis_sync():
+        asyncio.run(run_static_analysis_task(repo_url, repo_ref, static_task_id))
+    
+    thread = threading.Thread(target=run_analysis_sync, daemon=True)
+    thread.start()
+    
+    logger.info(f"Static analysis thread started for {static_task_id}")
+    
+    return {
+        "success": True,
+        "fuzz_task_id": task_name,
+        "static_task_id": static_task_id,
+        "message": "Fuzzing task submitted. Static analysis running in background."
+    }

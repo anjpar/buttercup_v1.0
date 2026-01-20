@@ -1,0 +1,85 @@
+<!--
+HTML updates for Static Analysis UI
+
+Add this to: orchestrator/src/buttercup/orchestrator/ui/static/index.html
+
+Insert this new tab after the "POVs & Crash Analysis" tab
+-->
+
+<!-- ========================================================================== -->
+<!-- NEW TAB: Static Analysis -->
+<!-- ========================================================================== -->
+
+<div class="tab-button" onclick="switchTab('static-analysis')">
+    <span>🔍</span>
+    <span>Static Analysis</span>
+</div>
+
+<!-- Tab content (add to the main content area) -->
+
+<div id="static-analysis-tab" class="tab-content">
+    <div class="tab-header">
+        <h2>🔍 Static Analysis Results</h2>
+        <div class="header-controls">
+            <select id="static-task-filter" onchange="loadStaticAnalysis()">
+                <option value="">All Tasks</option>
+                <!-- Populated dynamically -->
+            </select>
+            <select id="static-severity-filter" onchange="loadStaticAnalysis()">
+                <option value="">All Severities</option>
+                <option value="error">Errors</option>
+                <option value="warning">Warnings</option>
+                <option value="info">Info</option>
+            </select>
+            <select id="static-tool-filter" onchange="loadStaticAnalysis()">
+                <option value="">All Tools</option>
+                <option value="clang-tidy">clang-tidy</option>
+                <option value="cppcheck">cppcheck</option>
+                <option value="custom-security">custom-security</option>
+            </select>
+            <button onclick="loadStaticAnalysis()" class="refresh-btn">🔄 Refresh</button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div id="static-stats-cards" class="stats-cards">
+        <!-- Populated by JavaScript -->
+    </div>
+
+    <!-- View Toggle -->
+    <div class="view-toggle">
+        <button id="static-cluster-view-btn" class="active" onclick="showStaticClusterView()">
+            📊 Cluster View
+        </button>
+        <button id="static-list-view-btn" onclick="showStaticListView()">
+            📋 List View
+        </button>
+    </div>
+
+    <!-- Cluster View (default) -->
+    <div id="static-cluster-view">
+        <div id="static-clusters-container">
+            <!-- Populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- List View -->
+    <div id="static-list-view" style="display: none;">
+        <div id="static-findings-list">
+            <!-- Populated by JavaScript -->
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================== -->
+<!-- Modal for detailed finding view -->
+<!-- ========================================================================== -->
+
+<div id="static-finding-modal" class="modal">
+    <div class="modal-content large">
+        <span class="close" onclick="closeStaticFindingModal()">&times;</span>
+        <div id="static-finding-detail">
+            <!-- Populated by JavaScript -->
+        </div>
+    </div>
+</div>
